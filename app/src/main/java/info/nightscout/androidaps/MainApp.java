@@ -25,6 +25,7 @@ import java.util.ArrayList;
 
 import info.nightscout.androidaps.data.ConstraintChecker;
 import info.nightscout.androidaps.db.DatabaseHelper;
+import info.nightscout.androidaps.di.DependencyInjector;
 import info.nightscout.androidaps.interfaces.PluginBase;
 import info.nightscout.androidaps.interfaces.PluginType;
 import info.nightscout.androidaps.interfaces.PumpInterface;
@@ -85,6 +86,8 @@ import io.fabric.sdk.android.Fabric;
 
 
 public class MainApp extends Application {
+    private static DependencyInjector sInjector;
+
     private static Logger log = LoggerFactory.getLogger(L.CORE);
     private static KeepAliveReceiver keepAliveReceiver;
 
@@ -111,6 +114,7 @@ public class MainApp extends Application {
     public void onCreate() {
         super.onCreate();
         log.debug("onCreate");
+        sInjector = new DependencyInjector(this);
         sInstance = this;
         sResources = getResources();
         sConstraintsChecker = new ConstraintChecker(this);
@@ -399,5 +403,9 @@ public class MainApp extends Application {
             sDatabaseHelper.close();
             sDatabaseHelper = null;
         }
+    }
+
+    public static DependencyInjector getInjector() {
+        return sInjector;
     }
 }

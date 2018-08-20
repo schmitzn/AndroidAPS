@@ -33,10 +33,15 @@ import android.widget.TextView;
 
 import com.joanzapata.iconify.Iconify;
 import com.joanzapata.iconify.fonts.FontAwesomeModule;
+import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+
+import javax.inject.Inject;
 
 import info.nightscout.androidaps.activities.AgreementActivity;
 import info.nightscout.androidaps.activities.HistoryBrowseActivity;
@@ -69,12 +74,18 @@ public class MainActivity extends AppCompatActivity {
 
     private MenuItem pluginPreferencesMenuItem;
 
+    @Inject MainApp mMainApp;
+    @Inject Bus mBus;
+    @Inject ArrayList<PluginBase> mPluginsList;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         if (L.isEnabled(L.CORE))
             log.debug("onCreate");
+
+        MainApp.getInjector().getMainComponent().inject(this);
 
         Iconify.with(new FontAwesomeModule());
         LocaleHelper.onCreate(this, "en");
@@ -151,7 +162,7 @@ public class MainActivity extends AppCompatActivity {
             AndroidPermission.notifyForSMSPermissions(this);
         }
 
-        MainApp.bus().post(new EventFeatureRunning(EventFeatureRunning.Feature.MAIN));
+        mBus.post(new EventFeatureRunning(EventFeatureRunning.Feature.MAIN));
     }
 
     @Override
@@ -212,14 +223,14 @@ public class MainActivity extends AppCompatActivity {
         });
         Menu menu = navigationView.getMenu();
         menu.clear();
-        for (PluginBase p : MainApp.getPluginsList()) {
+        for (PluginBase p : mPluginsList) {
             pageAdapter.registerNewFragment(p);
             if (p.hasFragment() && !p.isFragmentVisible() && p.isEnabled(p.pluginDescription.getType()) && !p.pluginDescription.neverVisible) {
                 MenuItem menuItem = menu.add(p.getName());
                 menuItem.setCheckable(true);
                 menuItem.setOnMenuItemClickListener(item -> {
                     Intent intent = new Intent(this, SingleFragmentActivity.class);
-                    intent.putExtra("plugin", MainApp.getPluginsList().indexOf(p));
+                    intent.putExtra("plugin", mPluginsList.indexOf(p));
                     startActivity(intent);
                     ((DrawerLayout) findViewById(R.id.drawer_layout)).closeDrawers();
                     return true;
@@ -257,11 +268,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void registerBus() {
         try {
-            MainApp.bus().unregister(this);
+            mBus.unregister(this);
         } catch (RuntimeException x) {
             // Ignore
         }
-        MainApp.bus().register(this);
+        mBus.register(this);
     }
 
     private void checkEula() {
@@ -397,8 +408,8 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             case R.id.nav_exit:
                 log.debug("Exiting");
-                MainApp.instance().stopKeepAliveService();
-                MainApp.bus().post(new EventAppExit());
+                mMainApp.stopKeepAliveService();
+                mBus.post(new EventAppExit());
                 MainApp.closeDbHelper();
                 finish();
                 System.runFinalization();
